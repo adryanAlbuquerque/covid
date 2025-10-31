@@ -20,8 +20,9 @@ Este projeto demonstra a aplicação de **técnicas de Machine Learning** na ár
 utilizando dados reais da COVID-19 no Brasil.
 
 A análise inclui:
-- **Aprendizado Supervisionado:** modelo de **Regressão Linear** para entender a relação entre casos e óbitos.  
-- **Aprendizado Não Supervisionado:** **K-Means** para identificar grupos de estados com padrões semelhantes.  
+- Exploração e análise individual dos dados
+- Aprendizado Supervisionado (Regressão Linear)
+- Aprendizado Não Supervisionado (K-Means Clustering)
 """)
 
 # =========================
@@ -44,7 +45,7 @@ dados = carregar_dados()
 # =========================
 pagina = st.sidebar.radio(
     "Navegação",
-    ["Exploração de Dados", "Aprendizado Supervisionado", "Aprendizado Não Supervisionado (K-Means)"]
+    ["Exploração de Dados", "Análise Individual por Estado", "Aprendizado Supervisionado", "Aprendizado Não Supervisionado (K-Means)"]
 )
 
 # =========================
@@ -56,23 +57,61 @@ if pagina == "Exploração de Dados":
     dados_atuais = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
     dados_atuais["letalidade"] = (dados_atuais["obitos"] / dados_atuais["casos"]) * 100
 
-    st.subheader("Casos e Óbitos por Estado")
+    st.subheader("Casos confirmados por estado")
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.barplot(data=dados_atuais.sort_values("casos", ascending=False), x="estado", y="casos", color="steelblue")
     ax.set_xlabel("Estado")
     ax.set_ylabel("Casos Confirmados")
     st.pyplot(fig)
     plt.close(fig)
-    st.markdown("**Interpretação:** Os estados mais populosos, como São Paulo e Minas Gerais, apresentam o maior número de casos registrados.")
+    st.markdown("**Interpretação:** Estados mais populosos, como São Paulo e Minas Gerais, concentram o maior número de casos confirmados.")
 
-    st.subheader("Letalidade (%) por Estado")
+    st.subheader("Óbitos confirmados por estado")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(data=dados_atuais.sort_values("obitos", ascending=False), x="estado", y="obitos", color="indianred")
+    ax.set_xlabel("Estado")
+    ax.set_ylabel("Óbitos Confirmados")
+    st.pyplot(fig)
+    plt.close(fig)
+    st.markdown("**Interpretação:** O número de óbitos acompanha o de casos, evidenciando maior mortalidade nos estados mais afetados.")
+
+    st.subheader("Taxa de letalidade (%) por estado")
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.barplot(data=dados_atuais.sort_values("letalidade", ascending=False), x="estado", y="letalidade", color="gray")
     ax.set_xlabel("Estado")
     ax.set_ylabel("Letalidade (%)")
     st.pyplot(fig)
     plt.close(fig)
-    st.markdown("**Interpretação:** Estados com letalidade mais alta podem indicar maior impacto da pandemia, menor testagem ou subnotificação de casos leves.")
+    st.markdown("**Interpretação:** Letalidades mais altas podem indicar menor testagem ou sistemas de saúde sobrecarregados.")
+
+# =========================
+# ANÁLISE INDIVIDUAL
+# =========================
+elif pagina == "Análise Individual por Estado":
+    st.header("Análise Individual por Estado")
+
+    estados = sorted(dados["estado"].unique())
+    estado_sel = st.selectbox("Selecione o estado:", estados)
+    df_estado = dados[dados["estado"] == estado_sel]
+
+    st.subheader(f"Evolução dos casos e óbitos em {estado_sel}")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(df_estado["date"], df_estado["casos"], label="Casos", color="steelblue")
+    ax.plot(df_estado["date"], df_estado["obitos"], label="Óbitos", color="indianred")
+    ax.legend()
+    ax.set_xlabel("Data")
+    ax.set_ylabel("Quantidade")
+    st.pyplot(fig)
+    plt.close(fig)
+
+    taxa_crescimento = df_estado["casos"].pct_change().mean() * 100
+    st.metric("Crescimento médio diário de casos (%)", f"{taxa_crescimento:.2f}")
+
+    st.markdown("""
+    **Interpretação:**  
+    Este gráfico mostra o crescimento acumulado de casos e óbitos ao longo do tempo.  
+    A taxa de crescimento indica o avanço médio diário da doença no estado selecionado.
+    """)
 
 # =========================
 # APRENDIZADO SUPERVISIONADO
@@ -92,7 +131,6 @@ elif pagina == "Aprendizado Supervisionado":
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     modelo = LinearRegression()
     modelo.fit(X_train, y_train)
-
     y_pred = modelo.predict(X_test)
 
     r2 = r2_score(y_test, y_pred)
@@ -116,9 +154,10 @@ elif pagina == "Aprendizado Supervisionado":
 
     st.markdown("""
     **Interpretação:**  
-    - O modelo apresenta uma boa correlação entre casos e óbitos, o que é esperado em uma pandemia.  
-    - Um valor de **R² moderado** indica que há relação direta, mas outros fatores (idade, infraestrutura de saúde etc.) também influenciam.  
-    - O **MAE** e o **RMSE** mostram o erro médio entre os valores reais e os preditos.
+    - O modelo apresenta uma correlação moderada entre casos e óbitos.  
+    - O **R²** mostra o quanto da variação dos óbitos é explicada pelos casos.  
+    - O **MAE** e o **RMSE** representam o erro médio das previsões.  
+    - Apesar de simples, o modelo mostra uma tendência geral coerente.
     """)
 
 # =========================
@@ -128,35 +167,36 @@ elif pagina == "Aprendizado Não Supervisionado (K-Means)":
     st.header("Aprendizado Não Supervisionado — Agrupamento com K-Means")
 
     st.markdown("""
-    O **K-Means** é uma técnica de **aprendizado não supervisionado** que agrupa dados com características semelhantes.  
-    Aqui, agrupamos os estados brasileiros de acordo com o número total de casos e óbitos, criando **clusters** com perfis parecidos.
+    O **K-Means** é uma técnica de aprendizado não supervisionado que identifica grupos de dados com características semelhantes.  
+    Aqui, agrupamos os estados brasileiros conforme o número total de casos e óbitos.
     """)
 
     dados_cluster = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
 
+    k = st.slider("Selecione a quantidade de clusters (grupos):", min_value=2, max_value=6, value=3)
+
     scaler = StandardScaler()
     dados_norm = scaler.fit_transform(dados_cluster[["casos", "obitos"]])
 
-    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
     dados_cluster["cluster"] = kmeans.fit_predict(dados_norm)
 
-    st.subheader("Estados Agrupados por Perfil da Pandemia")
+    st.subheader("Estados agrupados por perfil da pandemia")
     st.dataframe(dados_cluster.sort_values("cluster"))
 
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.scatterplot(data=dados_cluster, x="casos", y="obitos", hue="cluster", palette="viridis", s=100)
     ax.set_xlabel("Casos Confirmados")
     ax.set_ylabel("Óbitos Confirmados")
-    ax.set_title("Agrupamento de Estados segundo Casos e Óbitos (K-Means)")
+    ax.set_title(f"Agrupamento de Estados segundo Casos e Óbitos (K={k})")
     st.pyplot(fig)
     plt.close(fig)
 
     st.markdown("""
     **Interpretação:**  
-    - Cada cor representa um *cluster* (grupo de estados com características semelhantes).  
-    - Estados no grupo superior (mais à direita e acima) possuem altos números de casos e óbitos — são os mais impactados.  
-    - Estados mais à esquerda representam locais com menor impacto.  
-    - O **K-Means** é útil para **descobrir padrões escondidos nos dados**, sem precisar de rótulos prévios.
+    - Cada cor representa um grupo de estados com características semelhantes.  
+    - Aumentar o número de clusters permite observar subdivisões mais detalhadas.  
+    - O K-Means é útil para identificar padrões ocultos, agrupando regiões com níveis parecidos de impacto da pandemia.
     """)
 
 # =========================
