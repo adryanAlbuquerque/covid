@@ -2,153 +2,161 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
-import requests, io
 
-st.set_page_config(page_title="COVID-19 — Análise Simplificada", layout="wide")
-sns.set_style("whitegrid")
+# =======================
+# CONFIGURAÇÕES GERAIS
+# =======================
+st.set_page_config(page_title="Análise de COVID-19 no Brasil", layout="wide")
 
-# === Função para carregar dados ===
+st.title("Análise de COVID-19 no Brasil")
+st.markdown("""
+Este projeto foi desenvolvido como parte da disciplina **Machine Learning Aplicado à Saúde**.  
+O objetivo é explorar dados reais da **COVID-19** no Brasil, realizando análises descritivas e aplicando uma técnica de **aprendizado não supervisionado (K-Means)** para identificar padrões entre os estados.
+""")
+
+# =======================
+# FUNÇÃO DE CARREGAMENTO
+# =======================
 @st.cache_data
 def carregar_dados():
     url = "https://raw.githubusercontent.com/wcota/covid19br/master/cases-brazil-states.csv"
-    try:
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        df = pd.read_csv(io.StringIO(resp.text))
-    except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
-        return pd.DataFrame()
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = pd.read_csv(url)
+    df["date"] = pd.to_datetime(df["date"])
     df = df.rename(columns={"state": "estado", "totalCases": "casos", "deaths": "obitos"})
+    df = df[["date", "estado", "casos", "obitos"]]
     df = df[df["estado"] != "TOTAL"]
-    df = df.dropna(subset=["date", "estado", "casos", "obitos"])
     return df
 
-# === Carregamento ===
 dados = carregar_dados()
-if dados.empty:
-    st.error("Erro ao carregar os dados. Verifique sua conexão.")
-    st.stop()
 
-st.title("Análise Simplificada da COVID-19 no Brasil")
-st.markdown("Este painel apresenta uma **análise exploratória clara e direta**, destacando quais estados foram mais afetados e padrões gerais da pandemia no Brasil.")
+# =======================
+# MENU LATERAL
+# =======================
+pagina = st.sidebar.radio(
+    "Navegação",
+    ["Visão Geral", "Análise por Estado", "Aprendizado Não Supervisionado (K-Means)"]
+)
 
-# === Escolha da página ===
-pagina = st.sidebar.radio("Navegação", ["Exploração dos Dados", "Agrupamento (K-Means)"])
+# =======================
+# VISÃO GERAL
+# =======================
+if pagina == "Visão Geral":
+    st.header("Visão Geral da COVID-19 no Brasil")
 
-# ================================================================
-# =====================  EXPLORAÇÃO SIMPLES  =====================
-# ================================================================
-if pagina == "Exploração dos Dados":
-    st.header("Exploração dos Dados (EDA) — Estados Mais Afetados")
-
-    dados_atuais = (
-        dados.sort_values("date")
-        .groupby("estado", as_index=False)
-        .last()[["estado", "casos", "obitos"]]
-    )
+    dados_atuais = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
     dados_atuais["letalidade"] = (dados_atuais["obitos"] / dados_atuais["casos"]) * 100
 
-    # Top estados por casos e óbitos
-    top_casos = dados_atuais.nlargest(5, "casos")[["estado", "casos"]]
-    top_obitos = dados_atuais.nlargest(5, "obitos")[["estado", "obitos"]]
-    top_letal = dados_atuais.nlargest(5, "letalidade")[["estado", "letalidade"]]
+    total_casos = int(dados_atuais["casos"].sum())
+    total_obitos = int(dados_atuais["obitos"].sum())
+    letalidade_media = dados_atuais["letalidade"].mean()
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total de Casos", f"{int(dados_atuais['casos'].sum()):,}".replace(",", "."))
-    col2.metric("Total de Óbitos", f"{int(dados_atuais['obitos'].sum()):,}".replace(",", "."))
-    col3.metric("Letalidade Média (%)", f"{dados_atuais['letalidade'].mean():.2f}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Casos Totais", f"{total_casos:,}".replace(",", "."))
+    c2.metric("Óbitos Totais", f"{total_obitos:,}".replace(",", "."))
+    c3.metric("Letalidade Média (%)", f"{letalidade_media:.2f}")
 
-    st.subheader("Ranking dos Estados Mais Afetados")
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Top 5 por Casos Confirmados:**")
-        st.table(top_casos)
-    with c2:
-        st.markdown("**Top 5 por Óbitos:**")
-        st.table(top_obitos)
-
-    st.subheader("Letalidade por Estado (%)")
+    st.subheader("Casos confirmados por estado")
     fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=dados_atuais.sort_values("letalidade", ascending=False),
-                x="letalidade", y="estado", palette="Reds_r", ax=ax)
-    ax.set_xlabel("Letalidade (%)")
-    ax.set_ylabel("Estado")
-    ax.set_title("Taxa de Letalidade por Estado")
+    sns.barplot(data=dados_atuais.sort_values("casos", ascending=False), x="estado", y="casos", color="steelblue")
+    ax.set_xlabel("Estado")
+    ax.set_ylabel("Casos Confirmados")
+    st.pyplot(fig)
+    plt.close(fig)
+    st.markdown("**Interpretação:** Os estados com maior número de casos são geralmente os mais populosos, como São Paulo, Minas Gerais e Paraná.")
+
+    st.subheader("Óbitos confirmados por estado")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(data=dados_atuais.sort_values("obitos", ascending=False), x="estado", y="obitos", color="indianred")
+    ax.set_xlabel("Estado")
+    ax.set_ylabel("Óbitos Confirmados")
+    st.pyplot(fig)
+    plt.close(fig)
+    st.markdown("**Interpretação:** O padrão de óbitos acompanha os casos confirmados, mostrando maior impacto nos estados mais densamente povoados.")
+
+    st.subheader("Taxa de letalidade (%) por estado")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(data=dados_atuais.sort_values("letalidade", ascending=False), x="estado", y="letalidade", color="gray")
+    ax.set_xlabel("Estado")
+    ax.set_ylabel("Letalidade (%)")
+    st.pyplot(fig)
+    plt.close(fig)
+    st.markdown("**Interpretação:** Estados com letalidade mais alta podem indicar subnotificação de casos leves ou dificuldades no sistema de saúde.")
+
+# =======================
+# ANÁLISE POR ESTADO
+# =======================
+elif pagina == "Análise por Estado":
+    st.header("Análise Individual por Estado")
+
+    estados = sorted(dados["estado"].unique())
+    estado_sel = st.selectbox("Selecione o estado:", estados)
+    df_estado = dados[dados["estado"] == estado_sel]
+
+    st.subheader(f"Evolução de casos e óbitos em {estado_sel}")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(df_estado["date"], df_estado["casos"], label="Casos", color="steelblue")
+    ax.plot(df_estado["date"], df_estado["obitos"], label="Óbitos", color="indianred")
+    ax.legend()
+    ax.set_xlabel("Data")
+    ax.set_ylabel("Quantidade")
     st.pyplot(fig)
     plt.close(fig)
 
-    # Interpretações automáticas
-    pior_estado_casos = top_casos.iloc[0]["estado"]
-    pior_estado_obitos = top_obitos.iloc[0]["estado"]
-    pior_estado_letal = top_letal.iloc[0]["estado"]
-    media_letal = dados_atuais["letalidade"].mean()
+    taxa_crescimento = df_estado["casos"].pct_change().mean() * 100
+    st.metric("Crescimento médio diário de casos (%)", f"{taxa_crescimento:.2f}")
+    st.markdown("**Interpretação:** Este gráfico mostra a progressão temporal da COVID-19 no estado selecionado. A taxa de crescimento indica o ritmo médio de aumento de casos ao longo do período.")
 
-    st.markdown(f"""
-    ### 🧩 Interpretação dos Dados:
-    - O estado com **maior número de casos** é **{pior_estado_casos}**.
-    - O estado com **maior número de óbitos** é **{pior_estado_obitos}**.
-    - O estado com **maior taxa de letalidade** é **{pior_estado_letal}**.
-    - A **letalidade média nacional** é de aproximadamente **{media_letal:.2f}%**.
-    - Estados com letalidade alta, mas poucos casos, indicam **baixa testagem** ou **atendimento limitado**.
-    - Já estados com muitos casos, mas letalidade menor, sugerem **melhor capacidade de diagnóstico e suporte hospitalar**.
+# =======================
+# K-MEANS (CLUSTERS)
+# =======================
+elif pagina == "Aprendizado Não Supervisionado (K-Means)":
+    st.header("Aprendizado Não Supervisionado — Agrupamento com K-Means")
+
+    st.markdown("""
+    Nesta seção, aplicamos o algoritmo **K-Means** para agrupar os estados brasileiros de acordo com o número total de **casos** e **óbitos**.  
+    O objetivo é identificar grupos de estados com padrões semelhantes de impacto da COVID-19.
     """)
 
-# ================================================================
-# ===================  APRENDIZAGEM NÃO SUPERV.  =================
-# ================================================================
-elif pagina == "Agrupamento (K-Means)":
-    st.header("Aprendizagem Não Supervisionada — Agrupamento de Estados")
+    dados_cluster = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
 
-    dados_atuais = (
-        dados.sort_values("date")
-        .groupby("estado", as_index=False)
-        .last()[["estado", "casos", "obitos"]]
-    )
-    dados_atuais["letalidade"] = (dados_atuais["obitos"] / dados_atuais["casos"]) * 100
-
-    X = dados_atuais[["casos", "obitos", "letalidade"]]
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    dados_norm = scaler.fit_transform(dados_cluster[["casos", "obitos"]])
 
-    k = st.slider("Escolha o número de grupos (k)", min_value=2, max_value=6, value=3)
-    km = KMeans(n_clusters=k, random_state=42, n_init=10)
-    labels = km.fit_predict(X_scaled)
-    dados_atuais["cluster"] = labels
+    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+    clusters = kmeans.fit_predict(dados_norm)
+    dados_cluster["cluster"] = clusters
 
-    st.subheader("Tabela com Agrupamento")
-    st.dataframe(dados_atuais.sort_values("cluster").reset_index(drop=True))
+    st.subheader("Distribuição dos Estados por Grupo (Cluster)")
+    st.dataframe(dados_cluster.sort_values("cluster"))
 
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.scatterplot(
-        data=dados_atuais,
-        x="casos", y="obitos",
+        data=dados_cluster,
+        x="casos",
+        y="obitos",
         hue="cluster",
-        palette="Set2", s=100, ax=ax
+        palette="viridis",
+        s=100
     )
-    ax.set_title("Agrupamento de Estados (K-Means)")
-    ax.set_xlabel("Casos")
-    ax.set_ylabel("Óbitos")
+    ax.set_xlabel("Casos Confirmados")
+    ax.set_ylabel("Óbitos Confirmados")
+    ax.set_title("Agrupamento de Estados pelo Impacto da COVID-19 (K-Means)")
     st.pyplot(fig)
     plt.close(fig)
 
-    sil = silhouette_score(X_scaled, labels)
-    st.markdown(f"**Índice Silhouette:** {sil:.2f} (quanto mais próximo de 1, melhor separação entre os grupos)")
-
-    resumo = dados_atuais.groupby("cluster")[["casos", "obitos", "letalidade"]].mean().round(2).reset_index()
-    st.subheader("Médias por Cluster")
-    st.table(resumo)
-
     st.markdown("""
-    ### 🧠 Interpretação:
-    - Cada cluster representa um **perfil epidemiológico**.
-    - Estados em clusters com mais casos e óbitos correspondem às **regiões mais populosas e urbanizadas**.
-    - Clusters menores indicam **menor impacto** ou **melhor controle epidemiológico**.
+    **Interpretação:**  
+    - Cada cor representa um grupo (*cluster*) de estados com níveis semelhantes de casos e óbitos.  
+    - Estados no grupo superior tendem a ter maior número de casos e óbitos — indicando maior impacto da pandemia.  
+    - Os grupos inferiores representam estados menos afetados.  
+    - O método **K-Means** é uma técnica de *aprendizado não supervisionado*, ou seja, o algoritmo cria os grupos automaticamente com base nas semelhanças entre os dados.
     """)
 
+# =======================
+# RODAPÉ
+# =======================
 st.markdown("---")
-st.caption("Fonte dos dados: Adaptado de [wcota/covid19br](https://github.com/wcota/covid19br)")
+st.caption("Projeto SENAC — Machine Learning Aplicado à Saúde | 2025")
