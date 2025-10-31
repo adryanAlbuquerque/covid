@@ -145,4 +145,4 @@ elif pagina == "Modelagem Supervisionada":
 
 # Rodapé
 st.markdown("---")
-st.caption("Projeto Acadêmico — Machine Learning Aplicado à Saúde | 2025")
+st.caption("Projeto SENAC — Machine Learning Aplicado à Saúde | 2025")
