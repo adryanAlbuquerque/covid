@@ -7,7 +7,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 
-# Configuração inicial
 st.set_page_config(page_title="Análise de COVID-19 no Brasil", layout="wide")
 
 st.title("Análise de COVID-19 no Brasil")
@@ -16,7 +15,6 @@ Este projeto demonstra a aplicação de **Aprendizado de Máquina Supervisionado
 O objetivo é analisar, visualizar e prever o número de óbitos com base na quantidade de casos confirmados.
 """)
 
-# Carregar dados
 @st.cache_data
 def carregar_dados():
     url = "https://raw.githubusercontent.com/wcota/covid19br/master/cases-brazil-states.csv"
@@ -29,12 +27,11 @@ def carregar_dados():
 
 dados = carregar_dados()
 
-# Menu lateral
 pagina = st.sidebar.radio("Navegação", ["Exploração dos Dados", "Análise por Estado", "Modelagem Supervisionada"])
 
-# =======================
+# =====================================================
 # EXPLORAÇÃO DOS DADOS
-# =======================
+# =====================================================
 if pagina == "Exploração dos Dados":
     st.header("Exploração dos Dados")
 
@@ -46,46 +43,61 @@ if pagina == "Exploração dos Dados":
     c2.metric("Óbitos Totais", f"{dados_atuais['obitos'].sum():,}".replace(",", "."))
     c3.metric("Letalidade Média (%)", f"{dados_atuais['letalidade'].mean():.2f}")
 
-    st.markdown("### Casos confirmados por estado")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=dados_atuais.sort_values("casos", ascending=False), x="estado", y="casos", color="steelblue")
-    ax.set_xlabel("Estado")
-    ax.set_ylabel("Casos Confirmados")
+    st.subheader("Distribuição Geral")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.histplot(dados_atuais["casos"], bins=10, color="steelblue", kde=True)
+        ax.set_title("Distribuição de Casos por Estado")
+        st.pyplot(fig)
+        plt.close(fig)
+
+    with col2:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.histplot(dados_atuais["obitos"], bins=10, color="indianred", kde=True)
+        ax.set_title("Distribuição de Óbitos por Estado")
+        st.pyplot(fig)
+        plt.close(fig)
+
+    st.markdown("Esses histogramas mostram a variação entre os estados, com forte concentração de casos e óbitos nos estados mais populosos.")
+
+    st.subheader("Correlação entre Casos e Óbitos")
+    fig, ax = plt.subplots(figsize=(7, 5))
+    sns.scatterplot(data=dados_atuais, x="casos", y="obitos", color="darkblue")
+    ax.set_title("Relação entre Casos e Óbitos por Estado")
     st.pyplot(fig)
     plt.close(fig)
+    st.markdown("A correlação é forte e positiva — quanto mais casos, maior o número de óbitos.")
 
-    st.markdown("**Interpretação:** Os estados com maior número de casos são São Paulo, Minas Gerais e Paraná, devido à alta densidade populacional.")
-
-    st.markdown("### Óbitos confirmados por estado")
+    st.subheader("Letalidade (%) por Estado")
     fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=dados_atuais.sort_values("obitos", ascending=False), x="estado", y="obitos", color="indianred")
-    ax.set_xlabel("Estado")
-    ax.set_ylabel("Óbitos")
-    st.pyplot(fig)
-    plt.close(fig)
-
-    st.markdown("**Interpretação:** O padrão de óbitos acompanha os casos, com destaque para os estados mais populosos.")
-
-    st.markdown("### Taxa de letalidade (%) por estado")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(data=dados_atuais.sort_values("letalidade", ascending=False), x="estado", y="letalidade", color="gray")
+    sns.barplot(data=dados_atuais.sort_values("letalidade", ascending=False),
+                x="estado", y="letalidade", color="gray")
     ax.set_xlabel("Estado")
     ax.set_ylabel("Letalidade (%)")
     st.pyplot(fig)
     plt.close(fig)
+    st.markdown("Estados com maior letalidade podem ter menor testagem ou infraestrutura hospitalar.")
 
-    st.markdown("**Interpretação:** Estados com letalidade mais alta podem ter menor capacidade de testagem ou atendimento médico.")
+    st.subheader("Mapa de Correlação")
+    corr = dados_atuais[["casos", "obitos", "letalidade"]].corr()
+    fig, ax = plt.subplots(figsize=(5, 4))
+    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", square=True)
+    ax.set_title("Correlação entre Variáveis")
+    st.pyplot(fig)
+    plt.close(fig)
 
-# =======================
+# =====================================================
 # ANÁLISE INDIVIDUAL
-# =======================
+# =====================================================
 elif pagina == "Análise por Estado":
     st.header("Análise Individual por Estado")
     estados = sorted(dados["estado"].unique())
     estado_sel = st.selectbox("Selecione o estado:", estados)
     df_estado = dados[dados["estado"] == estado_sel]
 
-    st.markdown(f"### Evolução da COVID-19 em {estado_sel}")
+    st.subheader(f"Evolução da COVID-19 em {estado_sel}")
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(df_estado["date"], df_estado["casos"], label="Casos", color="steelblue")
     ax.plot(df_estado["date"], df_estado["obitos"], label="Óbitos", color="indianred")
@@ -98,17 +110,15 @@ elif pagina == "Análise por Estado":
     taxa_crescimento = df_estado["casos"].pct_change().mean() * 100
     st.metric("Crescimento médio diário de casos (%)", f"{taxa_crescimento:.2f}")
 
-    st.markdown("**Interpretação:** Este gráfico mostra o crescimento acumulado de casos e óbitos ao longo do tempo. A taxa de crescimento indica o avanço médio diário da doença no estado selecionado.")
+    st.markdown("Este gráfico mostra o crescimento acumulado de casos e óbitos ao longo do tempo.")
 
-# =======================
+# =====================================================
 # MODELAGEM SUPERVISIONADA
-# =======================
+# =====================================================
 elif pagina == "Modelagem Supervisionada":
     st.header("Predição de Óbitos com Regressão Linear")
 
-    st.markdown("""
-    Nesta etapa, aplicamos um modelo de **Regressão Linear** para prever o número de óbitos com base no total de casos confirmados.
-    """)
+    st.markdown("Aplicação de um modelo de **Regressão Linear** para prever o número de óbitos com base no total de casos confirmados.")
 
     dados_atuais = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
     X = dados_atuais[["casos"]]
@@ -128,21 +138,24 @@ elif pagina == "Modelagem Supervisionada":
     col2.metric("MAE", f"{mae:.0f}")
     col3.metric("RMSE", f"{rmse:.0f}")
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.regplot(x=y_test, y=y_pred, scatter_kws={"s": 80, "color": "steelblue"}, line_kws={"color": "red"})
+    st.subheader("Desempenho do Modelo")
+    fig, ax = plt.subplots(figsize=(7, 5))
+    sns.regplot(x=y_test, y=y_pred, scatter_kws={"s": 70, "color": "steelblue"}, line_kws={"color": "red"})
     ax.set_xlabel("Óbitos Reais")
     ax.set_ylabel("Óbitos Preditos")
-    ax.set_title("Desempenho da Regressão Linear")
+    ax.set_title("Predição com Regressão Linear")
     st.pyplot(fig)
     plt.close(fig)
 
     st.markdown("""
     **Interpretação:**  
-    - O **R²** indica quanto da variação dos óbitos é explicada pelos casos confirmados.  
-    - O **MAE** e o **RMSE** mostram o erro médio das previsões.  
-    - Como o modelo usa apenas uma variável (casos), ele captura a relação geral, mas não considera fatores externos como testagem, idade média ou vacinação.
+    - O **R²** mostra quanto da variação dos óbitos é explicada pelos casos confirmados.  
+    - O **MAE** e o **RMSE** indicam o erro médio das previsões.  
+    - O modelo é simples e demonstra bem o conceito de aprendizado supervisionado.
     """)
 
-# Rodapé
+# =====================================================
+# RODAPÉ
+# =====================================================
 st.markdown("---")
 st.caption("Projeto SENAC — Machine Learning Aplicado à Saúde | 2025")
