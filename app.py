@@ -9,25 +9,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import numpy as np
 
-# =========================
-# CONFIGURAÇÕES INICIAIS
-# =========================
+# Configurações iniciais
 st.set_page_config(page_title="Análise COVID-19 - Machine Learning em Saúde", layout="wide")
-
 st.title("Análise de Dados da COVID-19 no Brasil")
 st.markdown("""
-Este projeto demonstra a aplicação de **técnicas de Machine Learning** na área da saúde,
-utilizando dados reais da COVID-19 no Brasil.
-
-A análise inclui:
-- Exploração e análise individual dos dados
-- Aprendizado Supervisionado (Regressão Linear)
-- Aprendizado Não Supervisionado (K-Means Clustering)
+Este projeto demonstra a aplicação de técnicas de Machine Learning na área da saúde,
+usando dados reais da COVID-19 no Brasil.  
+Inclui visão geral, análise por estado, aprendizado supervisionado e não supervisionado.
 """)
 
-# =========================
-# FUNÇÃO PARA CARREGAR DADOS
-# =========================
+# Carregar dados
 @st.cache_data
 def carregar_dados():
     url = "https://raw.githubusercontent.com/wcota/covid19br/master/cases-brazil-states.csv"
@@ -40,20 +31,33 @@ def carregar_dados():
 
 dados = carregar_dados()
 
-# =========================
-# MENU LATERAL
-# =========================
+# Menu lateral
 pagina = st.sidebar.radio(
     "Navegação",
-    ["Exploração de Dados", "Análise Individual por Estado", "Aprendizado Supervisionado", "Aprendizado Não Supervisionado (K-Means)"]
+    ["Visão Geral", "Exploração de Dados", "Análise Individual por Estado", 
+     "Aprendizado Supervisionado", "Aprendizado Não Supervisionado (K-Means)"]
 )
+
+# =========================
+# VISÃO GERAL DO BRASIL
+# =========================
+if pagina == "Visão Geral":
+    st.header("Visão Geral do Brasil")
+    dados_atuais = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
+    dados_atuais["letalidade"] = (dados_atuais["obitos"] / dados_atuais["casos"]) * 100
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Casos Totais", f"{dados_atuais['casos'].sum():,}".replace(",", "."))
+    c2.metric("Óbitos Totais", f"{dados_atuais['obitos'].sum():,}".replace(",", "."))
+    c3.metric("Letalidade Média (%)", f"{dados_atuais['letalidade'].mean():.2f}")
+
+    st.markdown("**Interpretação:** Essa visão geral mostra o panorama da COVID-19 no Brasil, destacando os estados mais impactados e a letalidade média.")
 
 # =========================
 # EXPLORAÇÃO DE DADOS
 # =========================
-if pagina == "Exploração de Dados":
+elif pagina == "Exploração de Dados":
     st.header("Exploração dos Dados (EDA)")
-
     dados_atuais = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
     dados_atuais["letalidade"] = (dados_atuais["obitos"] / dados_atuais["casos"]) * 100
 
@@ -64,7 +68,7 @@ if pagina == "Exploração de Dados":
     ax.set_ylabel("Casos Confirmados")
     st.pyplot(fig)
     plt.close(fig)
-    st.markdown("**Interpretação:** Estados mais populosos, como São Paulo e Minas Gerais, concentram o maior número de casos confirmados.")
+    st.markdown("**Interpretação:** Estados mais populosos, como São Paulo, Minas Gerais e Paraná, apresentam o maior número de casos confirmados.")
 
     st.subheader("Óbitos confirmados por estado")
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -73,7 +77,7 @@ if pagina == "Exploração de Dados":
     ax.set_ylabel("Óbitos Confirmados")
     st.pyplot(fig)
     plt.close(fig)
-    st.markdown("**Interpretação:** O número de óbitos acompanha o de casos, evidenciando maior mortalidade nos estados mais afetados.")
+    st.markdown("**Interpretação:** O padrão de óbitos acompanha os casos, evidenciando maior mortalidade nos estados mais impactados.")
 
     st.subheader("Taxa de letalidade (%) por estado")
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -85,11 +89,10 @@ if pagina == "Exploração de Dados":
     st.markdown("**Interpretação:** Letalidades mais altas podem indicar menor testagem ou sistemas de saúde sobrecarregados.")
 
 # =========================
-# ANÁLISE INDIVIDUAL
+# ANÁLISE INDIVIDUAL POR ESTADO
 # =========================
 elif pagina == "Análise Individual por Estado":
     st.header("Análise Individual por Estado")
-
     estados = sorted(dados["estado"].unique())
     estado_sel = st.selectbox("Selecione o estado:", estados)
     df_estado = dados[dados["estado"] == estado_sel]
@@ -107,24 +110,14 @@ elif pagina == "Análise Individual por Estado":
     taxa_crescimento = df_estado["casos"].pct_change().mean() * 100
     st.metric("Crescimento médio diário de casos (%)", f"{taxa_crescimento:.2f}")
 
-    st.markdown("""
-    **Interpretação:**  
-    Este gráfico mostra o crescimento acumulado de casos e óbitos ao longo do tempo.  
-    A taxa de crescimento indica o avanço médio diário da doença no estado selecionado.
-    """)
+    st.markdown("**Interpretação:** Esse gráfico mostra a evolução da COVID-19 no estado selecionado e a taxa média de crescimento diário de casos.")
 
 # =========================
 # APRENDIZADO SUPERVISIONADO
 # =========================
 elif pagina == "Aprendizado Supervisionado":
     st.header("Aprendizado Supervisionado — Regressão Linear")
-
-    st.markdown("""
-    Nesta seção, aplicamos **Regressão Linear** para investigar a relação entre o número de casos e o número de óbitos por COVID-19 nos estados brasileiros.
-    """)
-
     df_modelo = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
-
     X = df_modelo[["casos"]]
     y = df_modelo["obitos"]
 
@@ -137,7 +130,6 @@ elif pagina == "Aprendizado Supervisionado":
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-    st.subheader("Resultados do Modelo")
     col1, col2, col3 = st.columns(3)
     col1.metric("R²", f"{r2:.2f}")
     col2.metric("MAE", f"{mae:,.0f}")
@@ -152,28 +144,16 @@ elif pagina == "Aprendizado Supervisionado":
     st.pyplot(fig)
     plt.close(fig)
 
-    st.markdown("""
-    **Interpretação:**  
-    - O modelo apresenta uma correlação moderada entre casos e óbitos.  
-    - O **R²** mostra o quanto da variação dos óbitos é explicada pelos casos.  
-    - O **MAE** e o **RMSE** representam o erro médio das previsões.  
-    - Apesar de simples, o modelo mostra uma tendência geral coerente.
-    """)
+    st.markdown("**Interpretação:** O modelo estima óbitos a partir de casos confirmados. Apesar de simples, revela a tendência geral da pandemia.")
 
 # =========================
 # APRENDIZADO NÃO SUPERVISIONADO — K-MEANS
 # =========================
 elif pagina == "Aprendizado Não Supervisionado (K-Means)":
-    st.header("Aprendizado Não Supervisionado — Agrupamento com K-Means")
-
-    st.markdown("""
-    O **K-Means** é uma técnica de aprendizado não supervisionado que identifica grupos de dados com características semelhantes.  
-    Aqui, agrupamos os estados brasileiros conforme o número total de casos e óbitos.
-    """)
-
+    st.header("Aprendizado Não Supervisionado — K-Means")
     dados_cluster = dados.groupby("estado")[["casos", "obitos"]].max().reset_index()
 
-    k = st.slider("Selecione a quantidade de clusters (grupos):", min_value=2, max_value=6, value=3)
+    k = st.slider("Selecione a quantidade de clusters:", min_value=2, max_value=6, value=3)
 
     scaler = StandardScaler()
     dados_norm = scaler.fit_transform(dados_cluster[["casos", "obitos"]])
@@ -193,14 +173,10 @@ elif pagina == "Aprendizado Não Supervisionado (K-Means)":
     plt.close(fig)
 
     st.markdown("""
-    **Interpretação:**  
-    - Cada cor representa um grupo de estados com características semelhantes.  
-    - Aumentar o número de clusters permite observar subdivisões mais detalhadas.  
-    - O K-Means é útil para identificar padrões ocultos, agrupando regiões com níveis parecidos de impacto da pandemia.
+    **Interpretação:** Cada cor representa um grupo de estados com comportamento semelhante.  
+    Clusters ajudam a identificar padrões ocultos e regiões com níveis parecidos de impacto da pandemia.
     """)
 
-# =========================
-# RODAPÉ
-# =========================
+# Rodapé
 st.markdown("---")
-st.caption("Projeto desenvolvido para a disciplina Machine Learning Aplicado à Saúde — SENAC 2025")
+st.caption("Projeto desenvolvido para Machine Learning Aplicado à Saúde — SENAC 2025")
