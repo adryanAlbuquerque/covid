@@ -1,4 +1,4 @@
-# Machine Learning Aplicado à Saúde — Predição de Óbitos por COVID-19
+# Machine Learning Aplicado à Saúde — Análise de Óbitos por COVID-19
 
 ## Objetivo  
 Este projeto tem como objetivo demonstrar a aplicação de **técnicas de aprendizado supervisionado** em dados da área da saúde.  
