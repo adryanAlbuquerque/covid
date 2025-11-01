@@ -1,94 +1,140 @@
-# Análise de Dados da COVID-19 no Brasil
+Análise de Dados da COVID-19 no Brasil
 
-## Objetivo
-Este projeto demonstra a aplicação de técnicas de **Machine Learning** na área da saúde, utilizando dados reais da **COVID-19 no Brasil**.  
-O foco é compreender os padrões da pandemia por meio de **análise exploratória de dados (EDA)**, **modelos supervisionados (Regressão Linear)** e **não supervisionados (K-Means)**.
+Objetivo
+Este projeto demonstra a aplicação de técnicas de Machine Learning na área da saúde, utilizando dados reais da COVID-19 no Brasil. 
+O foco é compreender os padrões da pandemia por meio de análise exploratória de dados (EDA), modelos supervisionados (Regressão Linear) e não supervisionados (K-Means).
 
----
+Etapas do Projeto
 
-## Etapas do Projeto
-
-### 1. Coleta e Tratamento dos Dados
-Os dados foram obtidos do repositório público:  
-**Fonte:** [wcota/covid19br (GitHub)](https://github.com/wcota/covid19br)  
-Arquivo utilizado: `cases-brazil-states.csv`
+1. Coleta e Tratamento dos Dados
+Os dados foram obtidos do repositório público:
+Fonte: wcota/covid19br (GitHub) - https://github.com/wcota/covid19br
+Arquivo utilizado: cases-brazil-states.csv
 
 O dataset contém registros diários por estado, com as seguintes variáveis principais:
-- **date** — data da observação  
-- **state** — sigla do estado brasileiro  
-- **totalCases** — número acumulado de casos confirmados  
-- **deaths** — número acumulado de óbitos  
+- date — data da observação
+- state — sigla do estado brasileiro
+- totalCases — número acumulado de casos confirmados
+- deaths — número acumulado de óbitos
 
-Foram tratados os nomes das colunas e removido o total nacional para focar nas análises por estado.
+Foi feito tratamento das colunas, renomeação de variáveis e remoção da linha “TOTAL” para focar apenas em dados por estado.
 
----
+2. Exploração dos Dados (EDA)
+Esta etapa busca entender o panorama geral da COVID-19 no Brasil.
 
-### 2. Exploração dos Dados (EDA)
-A etapa de exploração visa entender o comportamento geral da pandemia no Brasil.
+Principais análises:
+- Total de casos e óbitos por estado.
+- Taxa de letalidade média nacional e por estado.
+- Gráficos comparativos mostrando quais estados foram mais afetados.
 
-**Principais análises:**
-- Ranking de estados mais afetados em número de casos e óbitos.  
-- Cálculo da **taxa de letalidade (%)** por estado.  
-- Visualização de gráficos de barras e tabelas comparativas.  
+Interpretação:
+Os estados mais populosos, como São Paulo e Minas Gerais, concentram o maior número de casos e óbitos.
+Já a letalidade tende a variar conforme a infraestrutura hospitalar e o número de testagens em cada região.
 
-**Interpretação:**  
-Os estados mais populosos (como São Paulo e Minas Gerais) apresentam os maiores números absolutos de casos e óbitos.  
-Entretanto, estados menores podem ter **taxas de letalidade proporcionalmente mais altas**, indicando possíveis diferenças na estrutura de atendimento e testagem.
+3. Análise Individual por Estado
+O usuário pode selecionar um estado específico e visualizar:
+- A evolução temporal dos casos e óbitos.
+- A taxa média de crescimento diário dos casos confirmados.
 
----
+Interpretação:
+Essa visão detalhada mostra como a pandemia evoluiu em cada estado, permitindo identificar picos de contágio e períodos de estabilização.
 
-### 3. Análise Individual por Estado
-Permite selecionar um estado específico e visualizar:
-- Evolução temporal de **casos e óbitos**.  
-- Cálculo da **taxa média de crescimento diário de casos**.  
+4. Aprendizado Supervisionado — Regressão Linear
+Foi aplicada uma Regressão Linear simples para estimar o número de óbitos a partir do número de casos.
 
-**Interpretação:**  
-O gráfico de linhas mostra a progressão acumulada ao longo do tempo, facilitando a observação de períodos de aumento rápido ou estabilização da pandemia em cada estado.
+Métricas apresentadas:
+- R² — indica o quanto os casos explicam os óbitos.
+- MAE — erro médio absoluto.
+- RMSE — raiz do erro quadrático médio.
 
----
+Interpretação:
+O modelo mostra uma relação linear positiva: quanto maior o número de casos, maior o número de óbitos.
+Porém, o modelo é simplificado e não leva em conta fatores externos como vacinação, idade média da população ou políticas públicas.
 
-### 4. Aprendizado Supervisionado — Regressão Linear
-Foi aplicado um modelo simples de **Regressão Linear** para verificar a relação entre o número de casos e o número de óbitos.
+5. Aprendizado Não Supervisionado — K-Means
+Nesta etapa, utilizou-se o algoritmo K-Means para agrupar os estados brasileiros conforme o impacto da pandemia.
 
-**Métricas utilizadas:**
-- **R²** — mostra o quanto os casos explicam os óbitos.  
-- **MAE** — erro absoluto médio.  
-- **RMSE** — raiz do erro quadrático médio.  
+O usuário pode selecionar o número de clusters (grupos) desejado.
 
-**Interpretação:**  
-O modelo mostra uma relação linear entre casos e óbitos, confirmando que o aumento de casos tende a resultar em mais óbitos.  
-Contudo, o modelo é limitado, pois não considera fatores externos (como vacinação, faixa etária e infraestrutura hospitalar).
+Saídas apresentadas:
+- Tabela com os estados e o cluster correspondente.
+- Gráfico de dispersão colorido, com cada cor representando um grupo de estados semelhantes.
 
----
+Interpretação:
+O K-Means agrupa os estados com base em padrões de comportamento:
+- Um cluster pode representar estados muito afetados (altos números de casos e óbitos).
+- Outro cluster pode representar estados com impacto moderado ou baixo.
 
-### 5. Aprendizado Não Supervisionado — K-Means
-Nesta etapa, aplicou-se o algoritmo **K-Means** para identificar grupos de estados com comportamentos semelhantes quanto ao impacto da pandemia.
+Esses agrupamentos ajudam a identificar padrões regionais ocultos e podem auxiliar na tomada de decisões estratégicas em saúde pública.
 
-O usuário pode **selecionar o número de clusters** (grupos) e visualizar:
-- Uma **tabela** indicando a qual cluster pertence cada estado.  
-- Um **gráfico de dispersão** colorido, mostrando como os estados se agrupam de acordo com casos e óbitos.
+6. Indicadores Nacionais
+A aplicação também apresenta uma visão geral do país:
+- Total de casos confirmados.
+- Total de óbitos.
+- Taxa média de letalidade.
 
-**Interpretação:**  
-Cada cor representa um grupo de estados com características parecidas.  
-Por exemplo:
-- Um cluster pode agrupar estados com **altos números de casos e óbitos**.  
-- Outro pode representar estados **menos afetados**.  
-Isso ajuda a entender padrões regionais e o comportamento coletivo das unidades federativas.
+Esses indicadores fornecem um resumo rápido da situação nacional, servindo como base para as análises por estado e os modelos de aprendizado.
 
----
+Execução da Aplicação
 
-### 6. Visão Geral e Indicadores Nacionais
-Além das análises específicas, a aplicação apresenta um **resumo geral do Brasil**, com:
-- Total de casos confirmados.  
-- Total de óbitos registrados.  
-- Letalidade média nacional.  
+1. Clonar o repositório
+git clone https://github.com/seuusuario/covid-ml-brasil.git
+cd covid-ml-brasil
 
-Essas métricas ajudam a contextualizar as análises individuais e comparativas.
+2. Criar e ativar um ambiente virtual (opcional)
+python -m venv venv
 
----
+No Windows:
+venv\Scripts\activate
 
-## Execução
+No Mac/Linux:
+source venv/bin/activate
 
-### 1. Instale as dependências:
-```bash
+3. Instalar as dependências
 pip install -r requirements.txt
+
+4. Executar a aplicação Streamlit
+streamlit run app.py
+
+5. Acessar no navegador
+http://localhost:8501
+
+A aplicação será aberta no navegador e exibirá as abas:
+- Exploração dos Dados
+- Análise por Estado
+- Modelagem Supervisionada
+- Modelagem Não Supervisionada
+
+Estrutura do Projeto
+.
+├── app.py
+├── requirements.txt
+├── README.txt
+
+Tecnologias Utilizadas
+- Python 3.10+
+- Pandas
+- Matplotlib / Seaborn
+- Scikit-learn
+- Streamlit
+
+Considerações Finais
+Este projeto mostra como a análise de dados e o aprendizado de máquina podem apoiar decisões em saúde pública.
+Mesmo com modelos simples, é possível identificar tendências, padrões regionais e relações importantes entre variáveis epidemiológicas.
+
+O uso de Regressão Linear e K-Means demonstra duas abordagens complementares:
+- Supervisionada: baseada em relações conhecidas entre variáveis.
+- Não supervisionada: baseada na descoberta de padrões ocultos nos dados.
+
+Essas técnicas reforçam o potencial da Ciência de Dados aplicada à Saúde.
+
+Autor: Adryan Albuquerque
+
+
+requirements.txt
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
